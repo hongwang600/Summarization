@@ -18,8 +18,11 @@ def get_all_words(data):
             all_text += sentence
     return all_text
 
-def build_vocab(train_data, dev_data, test_data):
-    all_data = train_data + dev_data + test_data
+def build_vocab(data_list):
+    all_data = []
+    for dataset in data_list:
+        all_data += dataset
+    #all_data = train_data + dev_data + test_data
     all_text = get_all_words(all_data)
     #print(all_text[:5])
     counter = gluonnlp.data.count_tokens(all_text)

@@ -55,6 +55,7 @@ class BiLSTM(nn.Module):
 
     def forward(self, padded_sentences, lengths):
         padded_embeds = self.embedding(padded_sentences)
+        #print(len(padded_sentences))
         lstm_out, hidden_state = self.lstm(padded_embeds, lengths)
         permuted_hidden = hidden_state[0].permute([1,0,2]).contiguous()
         return permuted_hidden.view(-1, self.hidden_dim*2)
@@ -64,7 +65,7 @@ class MyModel(nn.Module):
         super(MyModel, self).__init__()
         my_embed = my_vocab.embedding.idx_to_vec
         self.sentence_encoder = BiLSTM(len(my_embed), my_embed.asnumpy())
-        self.self_attention = SimpleEncoder(hidden_dim*2, 4, 2)
+        self.self_attention = SimpleEncoder(hidden_dim*2, 4, 10)
 
     def pack_paragraph(self, paragraphs):
         paragraph_lengths = []
@@ -92,7 +93,7 @@ class MyModel(nn.Module):
         doc_lengths = torch.tensor(lengths).view(-1,1)
         doc_lengths_matrix = doc_lengths.expand(-1, doc_size)
         masks[torch.ge(index_matrix-doc_lengths_matrix, 0)] = 0
-        return masks.cuda()
+        return masks.to(device)
 
     def encode_sentences(self, paragraphs):
         paragraph_lengths, sentence_lengths, sentences = \
@@ -107,18 +108,25 @@ class MyModel(nn.Module):
                                                  paragraph_lengths)
         return paragraph_embeds, paragraph_lengths
 
-    def forward(self, paragraphs, cand_pool):
+    def forward(self, paragraphs, cand_pool=None):
         #print(paragraph_embeds)
         batch_size = len(paragraphs)
-        paragraph_embeds, paragraph_lengths = \
-            self.encode_sentences(paragraphs+cand_pool)
-        cand_pool_embeds = paragraph_embeds[batch_size:]
-        paragraph_embeds = paragraph_embeds[:batch_size]
-        paragraph_lengths = paragraph_lengths[:batch_size]
+        if cand_pool is not None:
+            paragraph_embeds, paragraph_lengths = \
+                self.encode_sentences(paragraphs+cand_pool)
+            cand_pool_embeds = paragraph_embeds[batch_size:]
+            paragraph_embeds = paragraph_embeds[:batch_size]
+            paragraph_lengths = paragraph_lengths[:batch_size]
+        else:
+            paragraph_embeds, paragraph_lengths = \
+                self.encode_sentences(paragraphs)
         doc_size = max(paragraph_lengths)
         padded_paragraph_embeds = pad_sequence(paragraph_embeds,
                                                batch_first=True)
         masks = self.mask_lengths(batch_size, doc_size, paragraph_lengths)
         outs = self.self_attention(padded_paragraph_embeds, masks)
-        return outs, cand_pool_embeds
+        if cand_pool is not None:
+            return outs, cand_pool_embeds
+        else:
+            return outs
         #return paragraph_embeds, cand_pool_embeds

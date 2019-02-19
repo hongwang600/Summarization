@@ -16,13 +16,13 @@ CONFIG= {
     'dev_tgt_text_file':'data/summarization/val.txt.tgt',
     'test_file':'data/summarization/test.txt.src',
     'test_tgt_text_file':'data/summarization/test.txt.tgt',
-    'model_path':'results/representation_model.pt',
+    'model_path':'results/representation_model_10_layer.pt',
     'summarizer_model_path':'results/summarizer_fintune_model.pt',
     'summarizer_embed_model_path':'results/representation_model.pt',
     #'summarizer_embed_model_path':None,
     #'load_model_path':'results/sind_best_model_0001.pt',
     'load_model_path':None,
-    'exp_name':'runs_summarization/summarizer_finetune_model',
+    'exp_name':'runs_summarization/representation_model',
     'debug':False,
     'device': torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 }
