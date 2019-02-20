@@ -65,7 +65,7 @@ class MyModel(nn.Module):
         super(MyModel, self).__init__()
         my_embed = my_vocab.embedding.idx_to_vec
         self.sentence_encoder = BiLSTM(len(my_embed), my_embed.asnumpy())
-        self.self_attention = SimpleEncoder(hidden_dim*2, 4, 10)
+        self.self_attention = SimpleEncoder(hidden_dim*2, 4, 5)
 
     def pack_paragraph(self, paragraphs):
         paragraph_lengths = []

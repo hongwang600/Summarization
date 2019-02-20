@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
 from config import CONFIG as conf
 import random
+import json
 
 mask_pro = conf['mask_pro']
 random_seed = conf['random_seed']
@@ -42,6 +43,19 @@ def build_vocab(data_list):
     #embed = nn.Embedding(len(my_embed), len(my_embed[0]))
     #embed.weight.data.copy_(torch.from_numpy(my_embed.asnumpy()))
     return my_vocab
+
+def save_vocab(vocab):
+    json_str = vocab.to_json()
+    with open('data/vocab.json', 'w') as file_out:
+        json.dump(json_str, file_out)
+
+def load_vocab():
+    with open('data/vocab.json') as file_in:
+        json_str = json.load(file_in)
+    vocab = gluonnlp.Vocab.from_json(json_str)
+    glove = gluonnlp.embedding.create('glove', source='glove.6B.100d')
+    vocab.set_embedding(glove)
+    return vocab
 
 def build_paragraph(text_data, my_vocab):
     #print(my_vocab[text_data[0]])
@@ -89,11 +103,35 @@ def mask_sentence(batch_data):
                 para_len[i] = 1
         new_batch_data.append([para_embed, para_len])
         cand_pool.append([this_cand_pool_embed, this_cand_pool_length])
-    '''
-    for mask in batch_mask:
-        mask.requires_grad=False
-    for data in new_batch_data+cand_pool:
-        for embed in data[0]:
-            embed.requires_grad=False
-    '''
     return new_batch_data, batch_mask, cand_pool
+
+def replace_sentence(batch_data, sentence_cands):
+    batch_mask = []
+    new_batch_data = []
+    cand_pool = []
+    cand_size = len(sentence_cands)
+    #print(len(batch_data))
+    for para in batch_data:
+        if len(para[0]) < 2:
+            #batch_mask.append(torch.zeros(len(para[0])).byte())
+            continue
+        para_embed = list(para[0])
+        para_len = list(para[1])
+        this_cand_pool_embed = []
+        this_cand_pool_length = []
+        mask = torch.rand(len(para_len))
+        mask = mask.le(mask_pro)
+        if mask.sum() <=1:
+            idx = list(range(len(mask)))
+            sel_idx = random.sample(idx, 2)
+            mask[sel_idx] = 1
+            #mask[random.randint(0,len(mask)-1)]=1
+        batch_mask.append(mask)
+        for i in range(len(mask)):
+            if mask[i] == 1:
+                #this_cand_pool_embed.append(para_embed[i])
+                #this_cand_pool_length.append(para_len[i])
+                para_embed[i] = sentence_cands[random.randint(0, cand_size-1)]
+                para_len[i] = len(para_embed[i])
+        new_batch_data.append([para_embed, para_len])
+    return new_batch_data, batch_mask

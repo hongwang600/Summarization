@@ -1,13 +1,15 @@
-from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
-from utils import build_vocab, build_paragraph, filter_output, mask_sentence
+from data_loader import get_train_dev_test_data, read_oracle, read_target_txt,\
+    read_target_20_news
+from utils import build_vocab, build_paragraph, filter_output, mask_sentence, \
+    load_vocab
 from config import CONFIG as conf
 from model import MyModel
-from summarize_model import SummarizeModel
+from classification_model import ClassificationModel
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
-from eval import evaluate, evaluate_summarizer
+from eval import evaluate, evaluate_summarizer, evaluate_classifier
 from tensorboardX import SummaryWriter
 import random
 
@@ -21,11 +23,11 @@ exp_name = conf['exp_name']
 mask_pro = conf['mask_pro']
 loss_margin = conf['loss_margin']
 hidden_dim = conf['hidden_dim']
-train_oracle_file = conf['train_oracle_file']
-dev_oracle_file = conf['dev_oracle_file']
-dev_tgt_text_file = conf['dev_tgt_text_file']
-summarizer_model_path = conf['summarizer_model_path']
-summarizer_embed_model_path = conf['summarizer_embed_model_path']
+train_tgt_file = conf['train_tgt_file']
+dev_tgt_file = conf['dev_tgt_file']
+classifier_model_path = conf['classifier_model_path']
+classifier_embed_model_path = conf['classifier_embed_model_path']
+num_classes = conf['num_classes']
 
 torch.manual_seed(random_seed)
 random.seed(random_seed)
@@ -56,18 +58,18 @@ def build_training_pairs(outs, pool_sent_embeds, masks):
     return torch.cat(all_pos_scores), torch.cat(all_neg_scores)
 
 
-def train(train_data, dev_data, my_vocab, train_target, dev_target,
-          dev_target_txt):
+def train(train_data, dev_data, my_vocab, train_target, dev_target):
     #model = None
     embed_model = MyModel(my_vocab)
     #model = nn.DataParallel(model)
     embed_model = embed_model
-    if summarizer_embed_model_path  is not None:
-        embed_model = torch.load(summarizer_embed_model_path)
+    if classifier_embed_model_path  is not None:
+        embed_model = torch.load(classifier_embed_model_path)
     #criteria = torch.nn.CrossEntropyLoss()
-    model = SummarizeModel(embed_model, hidden_dim*2)
+    model = ClassificationModel(embed_model, hidden_dim*2, num_classes)
     model = model.to(device)
-    criteria = torch.nn.MSELoss()
+    #criteria = torch.nn.MSELoss()
+    criteria = torch.nn.CrossEntropyLoss()
     model_optim = optim.Adam(filter(lambda p: p.requires_grad,
                                     model.parameters()),
                              lr=learning_rate)
@@ -79,12 +81,12 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
     all_paragraph_lengths = [len(this_sample) for this_sample in train_data]
     train_idx = list(range(len(train_data)))
     for epoch_i in range(num_epoch):
+        random.shuffle(train_idx)
         total_loss = 0
         total_batch = 0
         all_paragraphs = [all_paragraphs[i] for i in train_idx]
         all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
         train_target = [train_target[i] for i in train_idx]
-        random.shuffle(train_idx)
         for current_batch in range(int((len(train_data)-1)/batch_size) + 1):
             if current_batch%100 ==0:
                 print(current_batch)
@@ -96,41 +98,27 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
             scores = model(paragraphs)
             targets = train_target[current_batch*batch_size:
                                    (current_batch+1)*batch_size]
-            num_doc, doc_size = scores.size()
-            labels = torch.zeros(num_doc, doc_size).to(device)
-            for i, this_target in enumerate(targets):
-                #print(labels[i], this_target)
-                #print(this_target)
-                #print(i)
-                #print(labels.size())
-                #print(labels)
-                #print(labels[i])
-                if len(this_target) > 0:
-                    labels[i][this_target] = 1
-            labels = filter_output(labels.view(-1), paragraph_lengths)
-            scores = filter_output(scores.view(-1), paragraph_lengths)
+            labels = torch.tensor(targets).to(device)
             loss = criteria(scores, labels)
             #print(loss)
             total_loss += loss.item()
             total_batch += 1
             loss.backward()
             model_optim.step()
-        acc, recall, rouge_2 = evaluate_summarizer(model, dev_data,
-                                                   dev_target, my_vocab,
-                                                   dev_target_txt)
-        if rouge_2 > best_acc:
-            torch.save(model, summarizer_model_path)
-            best_acc = rouge_2
+        acc = evaluate_classifier(model, dev_data, dev_target, my_vocab)
+        if acc > best_acc:
+            torch.save(model, classifier_model_path)
+            best_acc = acc
         writer.add_scalar('accuracy', acc, epoch_i)
-        writer.add_scalar('recall', recall, epoch_i)
-        writer.add_scalar('avg_loss', total_loss/total_batch, epoch_i)
-        writer.add_scalar('rouge_2', rouge_2, epoch_i)
 
 if __name__ == '__main__':
     train_data, dev_data, test_data = get_train_dev_test_data()
     #print(train_data[0])
     #print(dev_data[0])
     #print(test_data[0])
-    my_vocab = build_vocab([train_data, test_data])
-    test_target_txt = read_target_txt(test_tgt_text_file)
-    train(train_data, dev_data, my_vocab, train_oracle, dev_oracle)
+    #my_vocab = build_vocab([train_data, test_data])
+    my_vocab = load_vocab()
+    print('vocab loaded')
+    train_target = read_target_20_news(train_tgt_file)
+    dev_target = read_target_20_news(dev_tgt_file)
+    train(train_data, dev_data, my_vocab, train_target, dev_target)

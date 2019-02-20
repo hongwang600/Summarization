@@ -1,5 +1,6 @@
 import torch
-from utils import build_vocab, build_paragraph, filter_output, mask_sentence
+from utils import build_vocab, build_paragraph, filter_output, mask_sentence, \
+    load_vocab, replace_sentence
 from config import CONFIG as conf
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
 import torch.nn as nn
@@ -14,10 +15,6 @@ model_to_load = conf['load_model_path']
 mask_pro = conf['mask_pro']
 loss_margin = conf['loss_margin']
 rouge_calculator = Rouge.Rouge(use_ngram_buf=True)
-summarizer_model_path = conf['summarizer_model_path']
-dev_oracle_file = conf['dev_oracle_file']
-dev_tgt_text_file = conf['dev_tgt_text_file']
-test_tgt_text_file = conf['test_tgt_text_file']
 
 def compute_score(outs, pool_sent_embeds, masks):
     cos = nn.CosineSimilarity(dim=-1)
@@ -40,6 +37,35 @@ def compute_score(outs, pool_sent_embeds, masks):
             num_samples += mask_size
             num_corrects += torch.sum(pred_idx==target_idx)
     return num_corrects, num_samples
+
+def evaluate_replace(model, linear_layer, data, my_vocab):
+    all_paragraphs = [build_paragraph(this_sample, my_vocab)
+                      for this_sample in data]
+    all_paragraph_lengths = [len(this_sample) for this_sample in data]
+    sentence_cands = []
+    for i in range(2000):
+        sentence_cands += all_paragraphs[i][0]
+    total_corrects = 0
+    total_samples = 0
+    for current_batch in range(int((len(data)-1)/batch_size) + 1):
+        paragraphs = all_paragraphs[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        masked_paragraphs, masks = replace_sentence(paragraphs, sentence_cands)
+        embeds = model(masked_paragraphs)
+        #print(len(pos_score), len(neg_score))
+        this_batch_size, doc_size, embed_dim = embeds.size()
+        embeds = embeds.view(-1, embed_dim)
+        sigmoid = nn.Sigmoid()
+        scores = sigmoid(linear_layer(embeds).view(this_batch_size, doc_size))
+        labels = torch.cat(masks).long().to(device)
+        scores = filter_output(scores.view(-1), paragraph_lengths)
+        preds = scores.ge(0.5).long().to(device)
+        corrects = torch.sum(labels == preds)
+        total_corrects += corrects
+        total_samples += len(preds)
+    return float(total_corrects)/total_samples
 
 def evaluate(model, data, my_vocab):
     all_paragraphs = [build_paragraph(this_sample, my_vocab)
@@ -113,9 +139,36 @@ def evaluate_summarizer(model, data, labels, my_vocab, target_src):
     else:
         return -1, -1, scores['rouge-2']['f'][0]
 
+def evaluate_classifier(model, data, labels, my_vocab):
+    all_paragraphs = [build_paragraph(this_sample, my_vocab)
+                      for this_sample in data]
+    all_paragraph_lengths = [len(this_sample) for this_sample in data]
+    acc_total = 0
+    correct_total = 0
+    for current_batch in range(int((len(data)-1)/batch_size) + 1):
+        batch_data = data[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        paragraphs = all_paragraphs[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        scores = model(paragraphs)
+        targets = labels[current_batch*batch_size:
+                               (current_batch+1)*batch_size]
+        targets = torch.tensor(targets).to(device)
+        pred_idx = scores.argmax(-1)
+        acc_total += len(targets)
+        correct_total += torch.sum(targets == pred_idx)
+    return float(correct_total)/acc_total
+
 if __name__ == '__main__':
+    summarizer_model_path = conf['summarizer_model_path']
+    dev_oracle_file = conf['dev_oracle_file']
+    dev_tgt_text_file = conf['dev_tgt_text_file']
+    test_tgt_text_file = conf['test_tgt_text_file']
     train_data, dev_data, test_data = get_train_dev_test_data()
-    my_vocab = build_vocab(train_data, dev_data, test_data)
+    #my_vocab = build_vocab([train_data, dev_data, test_data])
+    my_vocab = load_vocab()
     #train_oracle = read_oracle(train_oracle_file)
     dev_oracle = read_oracle(dev_oracle_file)
     dev_target_txt = read_target_txt(dev_tgt_text_file)

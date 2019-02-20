@@ -1,5 +1,6 @@
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
-from utils import build_vocab, build_paragraph, filter_output, mask_sentence
+from utils import build_vocab, build_paragraph, filter_output, mask_sentence,\
+    save_vocab, load_vocab
 from config import CONFIG as conf
 from model import MyModel
 from summarize_model import SummarizeModel
@@ -131,7 +132,10 @@ if __name__ == '__main__':
     #print(train_data[0])
     #print(dev_data[0])
     #print(test_data[0])
-    my_vocab = build_vocab([train_data, dev_data, test_data])
+    #my_vocab = build_vocab([train_data, dev_data, test_data])
+    #save_vocab(my_vocab)
+    my_vocab = load_vocab()
+    print('vocab loaded')
     train_oracle = read_oracle(train_oracle_file)
     dev_oracle = read_oracle(dev_oracle_file)
     dev_target_txt = read_target_txt(dev_tgt_text_file)
