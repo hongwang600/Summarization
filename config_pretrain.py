@@ -18,13 +18,13 @@ CONFIG= {
     'dev_tgt_file':'data/pretrain/val.txt.tgt',
     'test_file':'data/pretrain/test.txt.src',
     'test_tgt_file':'data/pretrain/test.txt.tgt',
-    'model_path':'results/replace_representation_model.pt',
+    'model_path':'results/mask_representation_model.pt',
     #'summarizer_model_path':'results/summarizer_fintune_model.pt',
     #'summarizer_embed_model_path':'results/representation_model.pt',
     #'summarizer_embed_model_path':None,
     #'load_model_path':'results/sind_best_model_0001.pt',
-    'load_model_path':None,
-    'exp_name':'runs_pretrain/pretrain_replace_model',
+    'load_model_path':'results/replace_representation_model.pt',
+    'exp_name':'runs_pretrain/pretrain_mask_model',
     'debug':False,
     'device': torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 }

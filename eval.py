@@ -1,6 +1,6 @@
 import torch
 from utils import build_vocab, build_paragraph, filter_output, mask_sentence, \
-    load_vocab, replace_sentence
+    load_vocab, replace_sentence, gen_mask_based_length
 from config import CONFIG as conf
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
 import torch.nn as nn
@@ -85,6 +85,13 @@ def evaluate(model, data, my_vocab):
         total_samples += batch_samples
     return float(total_corrects)/total_samples
 
+def get_predicts(scores):
+    label = scores.ge(0.5)
+    predicts = []
+    for i in range(len(label)):
+        predicts.append(torch.arange(label.size(1))[label[i]])
+    return predicts
+
 def evaluate_summarizer(model, data, labels, my_vocab, target_src):
     all_paragraphs = [build_paragraph(this_sample, my_vocab)
                       for this_sample in data]
@@ -102,6 +109,11 @@ def evaluate_summarizer(model, data, labels, my_vocab, target_src):
         paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
                                 (current_batch+1)*batch_size]
         scores = model(paragraphs)
+        #this_batch_size, doc_size = scores.size()
+        #masks = gen_mask_based_length(this_batch_size, doc_size,
+        #                              paragraph_lengths)
+        #scores = scores*masks
+
         if labels is not None:
             targets = labels[current_batch*batch_size:
                                    (current_batch+1)*batch_size]

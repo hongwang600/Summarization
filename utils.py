@@ -8,6 +8,7 @@ import json
 
 mask_pro = conf['mask_pro']
 random_seed = conf['random_seed']
+device = conf['device']
 random.seed(random_seed)
 torch.manual_seed(random_seed)
 
@@ -135,3 +136,12 @@ def replace_sentence(batch_data, sentence_cands):
                 para_len[i] = len(para_embed[i])
         new_batch_data.append([para_embed, para_len])
     return new_batch_data, batch_mask
+
+def gen_mask_based_length(batch_size, doc_size, lengths):
+    masks = torch.ones(batch_size, doc_size)
+    index_matrix = torch.arange(0, doc_size).expand(batch_size, -1)
+    index_matrix = index_matrix.long()
+    doc_lengths = torch.tensor(lengths).view(-1,1)
+    doc_lengths_matrix = doc_lengths.expand(-1, doc_size)
+    masks[torch.ge(index_matrix-doc_lengths_matrix, 0)] = 0
+    return masks.to(device)
