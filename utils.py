@@ -106,6 +106,49 @@ def mask_sentence(batch_data):
         cand_pool.append([this_cand_pool_embed, this_cand_pool_length])
     return new_batch_data, batch_mask, cand_pool
 
+def switch_within_para(mask, para_embed, para_len):
+    para_size = len(para_len)
+    cand_idx = [i for i in range(para_size) if mask[i]==1]
+    origin_idx = list(cand_idx)
+    random.shuffle(cand_idx)
+    for i, idx in enumerate(cand_idx):
+        if idx == origin_idx[i] and i!=0:
+            cand_idx[i], cand_idx[i-1] = cand_idx[i-1], cand_idx[i]
+        elif idx==origin_idx[i]:
+            cand_idx[i], cand_idx[i+1] = cand_idx[i+1], cand_idx[i]
+    new_cand_embed = list(para_embed)
+    new_cand_len = list(para_len)
+    for i, idx in enumerate(origin_idx):
+        new_cand_embed[idx] = para_embed[cand_idx[i]]
+        new_cand_len[idx] = para_len[cand_idx[i]]
+    return new_cand_embed, new_cand_len
+
+def switch_sentence(batch_data, sentence_cands):
+    batch_mask = []
+    new_batch_data = []
+    cand_pool = []
+    cand_size = len(sentence_cands)
+    #print(len(batch_data))
+    for para in batch_data:
+        if len(para[0]) < 2:
+            #batch_mask.append(torch.zeros(len(para[0])).byte())
+            continue
+        para_embed = list(para[0])
+        para_len = list(para[1])
+        this_cand_pool_embed = []
+        this_cand_pool_length = []
+        mask = torch.rand(len(para_len))
+        mask = mask.le(mask_pro)
+        if mask.sum() <=1:
+            idx = list(range(len(mask)))
+            sel_idx = random.sample(idx, 2)
+            mask[sel_idx] = 1
+            #mask[random.randint(0,len(mask)-1)]=1
+        batch_mask.append(mask)
+        para_embed, para_len = switch_within_para(mask, para_embed, para_len)
+        new_batch_data.append([para_embed, para_len])
+    return new_batch_data, batch_mask
+
 def replace_sentence(batch_data, sentence_cands):
     batch_mask = []
     new_batch_data = []

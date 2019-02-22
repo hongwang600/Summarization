@@ -1,6 +1,6 @@
 import torch
 from utils import build_vocab, build_paragraph, filter_output, mask_sentence, \
-    load_vocab, replace_sentence, gen_mask_based_length
+    load_vocab, replace_sentence, gen_mask_based_length, switch_sentence
 from config import CONFIG as conf
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
 import torch.nn as nn
@@ -37,6 +37,35 @@ def compute_score(outs, pool_sent_embeds, masks):
             num_samples += mask_size
             num_corrects += torch.sum(pred_idx==target_idx)
     return num_corrects, num_samples
+
+def evaluate_switch(model, linear_layer, data, my_vocab):
+    all_paragraphs = [build_paragraph(this_sample, my_vocab)
+                      for this_sample in data]
+    all_paragraph_lengths = [len(this_sample) for this_sample in data]
+    sentence_cands = []
+    for i in range(2000):
+        sentence_cands += all_paragraphs[i][0]
+    total_corrects = 0
+    total_samples = 0
+    for current_batch in range(int((len(data)-1)/batch_size) + 1):
+        paragraphs = all_paragraphs[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
+                                (current_batch+1)*batch_size]
+        masked_paragraphs, masks = switch_sentence(paragraphs, sentence_cands)
+        embeds = model(masked_paragraphs)
+        #print(len(pos_score), len(neg_score))
+        this_batch_size, doc_size, embed_dim = embeds.size()
+        embeds = embeds.view(-1, embed_dim)
+        sigmoid = nn.Sigmoid()
+        scores = sigmoid(linear_layer(embeds).view(this_batch_size, doc_size))
+        labels = torch.cat(masks).long().to(device)
+        scores = filter_output(scores.view(-1), paragraph_lengths)
+        preds = scores.ge(0.5).long().to(device)
+        corrects = torch.sum(labels == preds)
+        total_corrects += corrects
+        total_samples += len(preds)
+    return float(total_corrects)/total_samples
 
 def evaluate_replace(model, linear_layer, data, my_vocab):
     all_paragraphs = [build_paragraph(this_sample, my_vocab)
@@ -144,6 +173,7 @@ def evaluate_summarizer(model, data, labels, my_vocab, target_src):
                 predict_txt.append(' '.join(joined_sentences))
 
     scores = rouge_calculator.compute_rouge(target_src, predict_txt)
+    print(scores)
 
     if labels is not None:
         return float(correct_total)/acc_total, float(correct_total)/recall_total,\

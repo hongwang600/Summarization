@@ -1,7 +1,7 @@
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt,\
     read_target_20_news
 from utils import build_vocab, build_paragraph, filter_output, mask_sentence,\
-    replace_sentence, load_vocab
+    replace_sentence, load_vocab, switch_sentence
 from config import CONFIG as conf
 from model import MyModel
 from classification_model import ClassificationModel
@@ -9,7 +9,8 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
-from eval import evaluate, evaluate_classifier, evaluate_replace
+from eval import evaluate, evaluate_classifier, evaluate_replace, \
+    evaluate_switch
 from tensorboardX import SummaryWriter
 from linearModel import LinearRegressionModel
 import random
@@ -76,6 +77,23 @@ def train_cls_task(model, paragraphs, paragraph_lengths, targets):
     loss = criteria(scores, labels)
     return loss
 
+def train_switch(model, classification_layer,
+                  paragraphs, paragraph_lengths, sentence_cands):
+    loss_function = nn.MSELoss()
+    masked_paragraphs, masks = switch_sentence(paragraphs, sentence_cands)
+    embeds = model(masked_paragraphs)
+    #print(len(pos_score), len(neg_score))
+    batch_size, doc_size, embed_dim = embeds.size()
+    embeds = embeds.view(-1, embed_dim)
+    sigmoid = nn.Sigmoid()
+    scores = sigmoid(classification_layer(embeds).view(batch_size, doc_size))
+    #labels = masks.view(batch_size, doc_size).long().to(device)
+    #labels = filter_output(labels.view(-1), paragraph_lengths)
+    labels = torch.cat(masks).float().to(device)
+    scores = filter_output(scores.view(-1), paragraph_lengths)
+    loss = loss_function(scores, labels)
+    return loss
+
 def train_replace(model, classification_layer,
                   paragraphs, paragraph_lengths, sentence_cands):
     loss_function = nn.MSELoss()
@@ -116,8 +134,9 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
     all_paragraph_lengths = [len(this_sample) for this_sample in train_data]
     train_idx = list(range(len(train_data)))
     for epoch_i in range(num_epoch):
-        mask_loss = 0
-        replace_loss = 0
+        #mask_loss = 0
+        #replace_loss = 0
+        switch_loss = 0
         total_batch = 0
         all_paragraphs = [all_paragraphs[i] for i in train_idx]
         all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
@@ -137,10 +156,14 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
             #loss = train_replace(model, classification_layer,
             #                     paragraphs, paragraph_lengths,
             #                     sentence_cands)
-            loss = train_mask(model, paragraphs, paragraph_lengths)
+            #loss = train_mask(model, paragraphs, paragraph_lengths)
+            loss = train_switch(model, classification_layer,
+                                 paragraphs, paragraph_lengths,
+                                 sentence_cands)
             #print(loss)
-            mask_loss += loss.item()
+            #mask_loss += loss.item()
             #replace_loss += loss.item()
+            switch_loss += loss.item()
             total_batch += 1
             loss.backward()
             model_optim.step()
@@ -155,16 +178,20 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
             loss.backward()
             cls_model_optim.step()
             '''
-        mask_acc = evaluate(model, dev_data, my_vocab)
+        #mask_acc = evaluate(model, dev_data, my_vocab)
         #replace_acc = evaluate_replace(model, classification_layer,
         #                                dev_data, my_vocab)
-        if mask_acc > best_acc:
+        switch_acc = evaluate_switch(model, classification_layer,
+                                        dev_data, my_vocab)
+        if switch_acc > best_acc:
             torch.save(model, model_path)
-            best_acc = mask_acc
-        writer.add_scalar('mask_accuracy', mask_acc, epoch_i)
-        writer.add_scalar('avg_mask_loss', mask_loss/total_batch, epoch_i)
+            best_acc = switch_acc
+        #writer.add_scalar('mask_accuracy', mask_acc, epoch_i)
+        #writer.add_scalar('avg_mask_loss', mask_loss/total_batch, epoch_i)
         #writer.add_scalar('replace_accuracy', replace_acc, epoch_i)
         #writer.add_scalar('avg_replace_loss', replace_loss/total_batch, epoch_i)
+        writer.add_scalar('switch_accuracy', switch_acc, epoch_i)
+        writer.add_scalar('avg_switch_loss', switch_loss/total_batch, epoch_i)
 
 if __name__ == '__main__':
     train_data, dev_data, test_data = \
