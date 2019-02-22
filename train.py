@@ -135,8 +135,8 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
     train_idx = list(range(len(train_data)))
     for epoch_i in range(num_epoch):
         #mask_loss = 0
-        #replace_loss = 0
-        switch_loss = 0
+        replace_loss = 0
+        #switch_loss = 0
         total_batch = 0
         all_paragraphs = [all_paragraphs[i] for i in train_idx]
         all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
@@ -153,17 +153,17 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
                                     (current_batch+1)*batch_size]
             paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
                                     (current_batch+1)*batch_size]
-            #loss = train_replace(model, classification_layer,
-            #                     paragraphs, paragraph_lengths,
-            #                     sentence_cands)
-            #loss = train_mask(model, paragraphs, paragraph_lengths)
-            loss = train_switch(model, classification_layer,
+            loss = train_replace(model, classification_layer,
                                  paragraphs, paragraph_lengths,
                                  sentence_cands)
+            #loss = train_mask(model, paragraphs, paragraph_lengths)
+            #loss = train_switch(model, classification_layer,
+            #                     paragraphs, paragraph_lengths,
+            #                     sentence_cands)
             #print(loss)
             #mask_loss += loss.item()
-            #replace_loss += loss.item()
-            switch_loss += loss.item()
+            replace_loss += loss.item()
+            #switch_loss += loss.item()
             total_batch += 1
             loss.backward()
             model_optim.step()
@@ -179,19 +179,19 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
             cls_model_optim.step()
             '''
         #mask_acc = evaluate(model, dev_data, my_vocab)
-        #replace_acc = evaluate_replace(model, classification_layer,
-        #                                dev_data, my_vocab)
-        switch_acc = evaluate_switch(model, classification_layer,
+        replace_acc = evaluate_replace(model, classification_layer,
                                         dev_data, my_vocab)
-        if switch_acc > best_acc:
+        #switch_acc = evaluate_switch(model, classification_layer,
+        #                                dev_data, my_vocab)
+        if replace_acc > best_acc:
             torch.save(model, model_path)
-            best_acc = switch_acc
+            best_acc = replace_acc
         #writer.add_scalar('mask_accuracy', mask_acc, epoch_i)
         #writer.add_scalar('avg_mask_loss', mask_loss/total_batch, epoch_i)
-        #writer.add_scalar('replace_accuracy', replace_acc, epoch_i)
-        #writer.add_scalar('avg_replace_loss', replace_loss/total_batch, epoch_i)
-        writer.add_scalar('switch_accuracy', switch_acc, epoch_i)
-        writer.add_scalar('avg_switch_loss', switch_loss/total_batch, epoch_i)
+        writer.add_scalar('replace_accuracy', replace_acc, epoch_i)
+        writer.add_scalar('avg_replace_loss', replace_loss/total_batch, epoch_i)
+        #writer.add_scalar('switch_accuracy', switch_acc, epoch_i)
+        #writer.add_scalar('avg_switch_loss', switch_loss/total_batch, epoch_i)
 
 if __name__ == '__main__':
     train_data, dev_data, test_data = \
