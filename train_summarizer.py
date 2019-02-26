@@ -75,28 +75,35 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
     best_acc = -1
     writer = SummaryWriter(exp_name)
     #print(len(train_data))
-    all_paragraphs = [build_paragraph(this_sample, my_vocab)
-                      for this_sample in train_data]
-    all_paragraph_lengths = [len(this_sample) for this_sample in train_data]
+    #all_paragraphs = [build_paragraph(this_sample, my_vocab)
+    #                  for this_sample in train_data]
+    #all_paragraph_lengths = [len(this_sample) for this_sample in train_data]
     train_idx = list(range(len(train_data)))
     for epoch_i in range(num_epoch):
         total_loss = 0
         total_batch = 0
-        all_paragraphs = [all_paragraphs[i] for i in train_idx]
-        all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
+        train_data = [train_data[i] for i in train_idx]
+        #all_paragraphs = [all_paragraphs[i] for i in train_idx]
+        #all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
         train_target = [train_target[i] for i in train_idx]
         random.shuffle(train_idx)
         for current_batch in range(int((len(train_data)-1)/batch_size) + 1):
             if current_batch%100 ==0:
                 print(current_batch)
             model_optim.zero_grad()
-            paragraphs = all_paragraphs[current_batch*batch_size:
+            batch_data = train_data[current_batch*batch_size:
                                     (current_batch+1)*batch_size]
-            paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
-                                    (current_batch+1)*batch_size]
-            scores = model(paragraphs)
             targets = train_target[current_batch*batch_size:
                                    (current_batch+1)*batch_size]
+            paragraphs = [build_paragraph(this_sample, my_vocab)
+                          for this_sample in batch_data]
+            paragraph_lengths = [len(this_sample) for this_sample in batch_data]
+            #paragraphs = all_paragraphs[current_batch*batch_size:
+            #                        (current_batch+1)*batch_size]
+            #paragraph_lengths = all_paragraph_lengths[current_batch*batch_size:
+            #                        (current_batch+1)*batch_size]
+
+            scores = model(paragraphs)
             num_doc, doc_size = scores.size()
             labels = torch.zeros(num_doc, doc_size).to(device)
             for i, this_target in enumerate(targets):
@@ -116,16 +123,16 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
             total_batch += 1
             loss.backward()
             model_optim.step()
-        acc, recall, rouge_2 = evaluate_summarizer(model, dev_data,
+        acc, recall, scores = evaluate_summarizer(model, dev_data,
                                                    dev_target, my_vocab,
                                                    dev_target_txt)
-        if rouge_2 > best_acc:
-            torch.save(model, summarizer_model_path)
-            best_acc = rouge_2
+        torch.save(model, summarizer_model_path+'_'+str(epoch_i)+'.pt')
         writer.add_scalar('accuracy', acc, epoch_i)
         writer.add_scalar('recall', recall, epoch_i)
         writer.add_scalar('avg_loss', total_loss/total_batch, epoch_i)
-        writer.add_scalar('rouge_2', rouge_2, epoch_i)
+        writer.add_scalar('rouge_1', scores[0], epoch_i)
+        writer.add_scalar('rouge_2', scores[1], epoch_i)
+        writer.add_scalar('rouge_l', scores[2], epoch_i)
 
 if __name__ == '__main__':
     train_data, dev_data, test_data = get_train_dev_test_data()

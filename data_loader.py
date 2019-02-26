@@ -21,7 +21,8 @@ def read_data(filename, add_first_sentence, keep_single_sent):
                 all_sentences = [['<startsent>']]
             count = len(all_sentences)
             for sentence in line.split('##SENT##'):
-                sentence = sentence.split()[:max_sent_len]
+                #sentence = sentence.split()[:max_sent_len]
+                sentence = sentence.split()
                 all_sentences.append(sentence)
                 count+=1
                 if count == max_doc_len:
@@ -31,8 +32,11 @@ def read_data(filename, add_first_sentence, keep_single_sent):
     return data
 
 #if __name__ == '__main__':
-def get_train_dev_test_data(add_first_sentence = False, keep_single_sent=True):
-    train_data = read_data(train_file, add_first_sentence, keep_single_sent)
+def get_train_dev_test_data(add_first_sentence = False, keep_single_sent=True,
+                            ignore_train=False):
+    train_data = None
+    if not ignore_train:
+        train_data = read_data(train_file, add_first_sentence, keep_single_sent)
     dev_data = read_data(dev_file, add_first_sentence, keep_single_sent)
     test_data = read_data(test_file, add_first_sentence, keep_single_sent)
     return train_data, dev_data, test_data
@@ -53,13 +57,16 @@ def read_oracle(file_name):
             target.append(oracle_tuple)
     return target
 
-def read_target_txt(file_name):
+def read_target_txt(file_name, is_combine=True):
     target = []
     with open(file_name) as in_file:
         for line in in_file:
             line = line.strip()
             sentences = line.split('##SENT##')
-            target.append(' '.join(sentences))
+            if is_combine:
+                target.append(' '.join(sentences))
+            else:
+                target.append(sentences)
     return target
 
 def read_target_20_news(file_name):

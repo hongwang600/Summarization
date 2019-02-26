@@ -123,6 +123,28 @@ def switch_within_para(mask, para_embed, para_len):
         new_cand_len[idx] = para_len[cand_idx[i]]
     return new_cand_embed, new_cand_len
 
+def local_sort_sentence(batch_data, cand_permutation):
+    sorter_len = 3
+    new_batch_data = []
+    cand_labels = torch.LongTensor(len(batch_data)).random_(0, len(cand_permutation))
+    sel_labels = []
+    start_idx_list = []
+    for i, para in enumerate(batch_data):
+        if len(para[0]) < sorter_len:
+            continue
+        start_idx = random.randint(0, len(para[0])-sorter_len)
+        start_idx_list.append(start_idx)
+        para_embed = list(para[0])
+        para_len = list(para[1])
+        this_label = cand_labels[i]
+        sel_labels.append(this_label)
+        this_permut = cand_permutation[this_label]
+        for j in range(len(this_permut)):
+            para_embed[start_idx+j] = para[0][start_idx+this_permut[j]]
+            para_len[start_idx+j] = para[1][start_idx+this_permut[j]]
+        new_batch_data.append([para_embed, para_len])
+    return new_batch_data, start_idx_list, sel_labels
+
 def switch_sentence(batch_data, sentence_cands):
     batch_mask = []
     new_batch_data = []
@@ -188,3 +210,15 @@ def gen_mask_based_length(batch_size, doc_size, lengths):
     doc_lengths_matrix = doc_lengths.expand(-1, doc_size)
     masks[torch.ge(index_matrix-doc_lengths_matrix, 0)] = 0
     return masks.to(device)
+
+def get_fetch_idx(batch_size, start_idx):
+    num_to_sort = 3
+    start_idx = torch.tensor(start_idx)
+    idx_1 = torch.arange(batch_size).view(-1,1).expand(-1, num_to_sort)
+    idx_1 = idx_1.contiguous().view(-1)
+    idx_2 = start_idx.view(-1,1).expand(-1, num_to_sort)
+    idx_2 = idx_2.contiguous()
+    for i in range(num_to_sort):
+        idx_2[:,i] += i
+    idx_2 = idx_2.contiguous().view(-1)
+    return idx_1, idx_2
