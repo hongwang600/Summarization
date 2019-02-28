@@ -198,22 +198,23 @@ def evaluate_summarizer(model, data, labels, my_vocab, target_src, is_eval=False
                 #print(pred_sentences)
                 joined_sentences = [' '.join(sentence) for sentence in
                                     pred_sentences]
-                predict_txt.append(' '.join(joined_sentences))
+                predict_txt.append('\n'.join(joined_sentences))
         else:
             _, pred_idx = scores.topk(sel_top_k, -1)
             for i in range(len(batch_data)):
                 pred_sentences = [batch_data[i][j] for j in pred_idx[i]
                                   if j < len(batch_data[i])]
+                #pred_sentences = batch_data[i][:sel_top_k]
                 if len(pred_sentences) == 0:
                     pred_sentences = batch_data[i][:sel_top_k]
                 #print(pred_sentences)
                 joined_sentences = [' '.join(sentence) for sentence in
                                     pred_sentences]
-                predict_txt.append(' '.join(joined_sentences))
+                predict_txt.append('\n'.join(joined_sentences))
 
     #scores = compute_rouge_score(predict_txt, target_src)
     scores = rouge_eval(target_src, predict_txt)
-    print(scores)
+    #print(scores)
     if labels is not None:
         return float(correct_total)/acc_total, float(correct_total)/recall_total,\
             scores

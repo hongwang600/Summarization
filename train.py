@@ -1,5 +1,5 @@
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt,\
-    read_target_20_news
+    read_target_20_news, read_data
 from utils import build_vocab, build_paragraph, filter_output, mask_sentence,\
     replace_sentence, load_vocab, switch_sentence, local_sort_sentence, \
     get_fetch_idx
@@ -144,8 +144,8 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
     model_optim = optim.Adam(filter(lambda p: p.requires_grad,
                                     model.parameters()),
                              lr=learning_rate)
-    #classification_layer = LinearRegressionModel(hidden_dim*2, 1)
-    classification_layer = LocalSorterModel(hidden_dim*2, num_to_sort)
+    classification_layer = LinearRegressionModel(hidden_dim*2, 1)
+    #classification_layer = LocalSorterModel(hidden_dim*2, num_to_sort)
     classification_layer = classification_layer.to(device)
     classifier_optim = optim.Adam(classification_layer.parameters(),
                                   lr=learning_rate)
@@ -159,8 +159,8 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
     for epoch_i in range(num_epoch):
         #mask_loss = 0
         #replace_loss = 0
-        #switch_loss = 0
-        sorter_loss = 0
+        switch_loss = 0
+        #sorter_loss = 0
         total_batch = 0
         all_paragraphs = [all_paragraphs[i] for i in train_idx]
         all_paragraph_lengths = [all_paragraph_lengths[i] for i in train_idx]
@@ -181,17 +181,17 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
             #                     paragraphs, paragraph_lengths,
             #                     sentence_cands)
             #loss = train_mask(model, paragraphs, paragraph_lengths)
-            #loss = train_switch(model, classification_layer,
-            #                     paragraphs, paragraph_lengths,
-            #                     sentence_cands)
-            loss = train_sorter(model, classification_layer,
+            loss = train_switch(model, classification_layer,
                                  paragraphs, paragraph_lengths,
-                                 cand_permuts)
+                                 sentence_cands)
+            #loss = train_sorter(model, classification_layer,
+            #                     paragraphs, paragraph_lengths,
+            #                     cand_permuts)
             #print(loss)
             #mask_loss += loss.item()
             #replace_loss += loss.item()
-            #switch_loss += loss.item()
-            sorter_loss += loss.item()
+            switch_loss += loss.item()
+            #sorter_loss += loss.item()
             total_batch += 1
             loss.backward()
             model_optim.step()
@@ -207,26 +207,28 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
             cls_model_optim.step()
             '''
         #mask_acc = evaluate(model, dev_data, my_vocab)
-        sorter_acc = evaluate_sorter(model, classification_layer, dev_data, my_vocab, cand_permuts)
+        #sorter_acc = evaluate_sorter(model, classification_layer, dev_data, my_vocab, cand_permuts)
         #replace_acc = evaluate_replace(model, classification_layer,
         #                                dev_data, my_vocab)
-        #switch_acc = evaluate_switch(model, classification_layer,
-        #                                dev_data, my_vocab)
-        if sorter_acc > best_acc:
+        switch_acc = evaluate_switch(model, classification_layer,
+                                        dev_data, my_vocab)
+        if switch_acc > best_acc:
             torch.save(model, model_path)
-            best_acc = sorter_acc
+            best_acc = switch_acc
         #writer.add_scalar('mask_accuracy', mask_acc, epoch_i)
         #writer.add_scalar('avg_mask_loss', mask_loss/total_batch, epoch_i)
         #writer.add_scalar('replace_accuracy', replace_acc, epoch_i)
         #writer.add_scalar('avg_replace_loss', replace_loss/total_batch, epoch_i)
-        #writer.add_scalar('switch_accuracy', switch_acc, epoch_i)
-        #writer.add_scalar('avg_switch_loss', switch_loss/total_batch, epoch_i)
-        writer.add_scalar('sorter_accuracy', sorter_acc, epoch_i)
-        writer.add_scalar('avg_sorter_loss', sorter_loss/total_batch, epoch_i)
+        writer.add_scalar('switch_accuracy', switch_acc, epoch_i)
+        writer.add_scalar('avg_switch_loss', switch_loss/total_batch, epoch_i)
+        #writer.add_scalar('sorter_accuracy', sorter_acc, epoch_i)
+        #writer.add_scalar('avg_sorter_loss', sorter_loss/total_batch, epoch_i)
 
 if __name__ == '__main__':
     train_data, dev_data, test_data = \
         get_train_dev_test_data(keep_single_sent=False)
+    nyt_news = read_data('data/summarization/nytimes/train_nytime.txt', False, False)
+    train_data += nyt_news
     #print(train_data[0])
     #print(dev_data[0])
     #print(test_data[0])

@@ -11,6 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 from eval import evaluate, evaluate_summarizer
 from tensorboardX import SummaryWriter
 import random
+import json
 
 batch_size = conf['batch_size']
 num_epoch = conf['epoch']
@@ -27,6 +28,7 @@ dev_oracle_file = conf['dev_oracle_file']
 dev_tgt_text_file = conf['dev_tgt_text_file']
 summarizer_model_path = conf['summarizer_model_path']
 summarizer_embed_model_path = conf['summarizer_embed_model_path']
+score_path = conf['score_path']
 
 torch.manual_seed(random_seed)
 random.seed(random_seed)
@@ -65,6 +67,9 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
     embed_model = embed_model
     if summarizer_embed_model_path  is not None:
         embed_model = torch.load(summarizer_embed_model_path)
+        #load_embed_model = torch.load(summarizer_embed_model_path)
+        #sent_enc_stat = load_embed_model.sentence_encoder.state_dict()
+        #embed_model.sentence_encoder.load_state_dict(sent_enc_stat)
     #criteria = torch.nn.CrossEntropyLoss()
     model = SummarizeModel(embed_model, hidden_dim*2)
     model = model.to(device)
@@ -126,6 +131,10 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target,
         acc, recall, scores = evaluate_summarizer(model, dev_data,
                                                    dev_target, my_vocab,
                                                    dev_target_txt)
+        with open(score_path+'_'+str(epoch_i)+'_score', 'w') as f_out:
+            json.dump(scores, f_out)
+        scores = [scores['rouge_1_f_score'], scores['rouge_2_f_score'],
+                  scores['rouge_l_f_score']]
         torch.save(model, summarizer_model_path+'_'+str(epoch_i)+'.pt')
         writer.add_scalar('accuracy', acc, epoch_i)
         writer.add_scalar('recall', recall, epoch_i)

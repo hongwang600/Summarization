@@ -8,7 +8,7 @@ from ast import literal_eval as make_tuple
 train_file = conf['train_file']
 dev_file = conf['dev_file']
 test_file = conf['test_file']
-max_sent_len = 100
+max_sent_len = 120
 max_doc_len = 80
 
 def read_data(filename, add_first_sentence, keep_single_sent):
@@ -64,7 +64,7 @@ def read_target_txt(file_name, is_combine=True):
             line = line.strip()
             sentences = line.split('##SENT##')
             if is_combine:
-                target.append(' '.join(sentences))
+                target.append('\n'.join(sentences))
             else:
                 target.append(sentences)
     return target

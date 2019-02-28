@@ -1,4 +1,15 @@
 import torch
+basic_path = '/mnt/sshd/hongwang/summ_results/'
+#basic_name = 'basic'
+#basic_name = 'mask'
+#basic_name = 'replace'
+#basic_name = 'switch'
+#basic_name = 'local_sort'
+basic_name = 'sent_enc_switch'
+#embed_path = 'results/useful_represents/mask_0_25_representation_model.pt'
+#embed_path = 'results/useful_represents/replace_0_25_representation_model.pt'
+embed_path = 'results/useful_represents/switch_0_25_representation_model.pt'
+#embed_path = 'results/useful_represents/local_sort_representation_model.pt'
 CONFIG= {
     'learning_rate': 0.00001,
     'embedding_dim': 100,
@@ -17,14 +28,15 @@ CONFIG= {
     'test_file':'data/summarization/test.txt.src',
     'test_tgt_text_file':'data/summarization/test.txt.tgt',
     'model_path':'results/representation_model.pt',
-    'summarizer_model_path':'/mnt/sshd/hongwang/summ_results/summarizer_finetune_local_sort_model',
-    'summarizer_embed_model_path':'results/useful_represents/local_sorter_representation_model.pt',
-    'ref_folder': '/mnt/sshd/hongwang/summ_results/eval/ref_local_sorter',
-    'pred_folder': '/mnt/sshd/hongwang/summ_results/eval/pred_local_sorter',
+    'summarizer_model_path':basic_path + 'models/'+basic_name+'_model',
+    'score_path':basic_path + 'scores/'+basic_name+'_model',
+    'summarizer_embed_model_path': embed_path,
     #'summarizer_embed_model_path':None,
+    'ref_folder': basic_path+'eval/ref_'+basic_name+'/',
+    'pred_folder': basic_path+'eval/pred_'+basic_name+'/',
     #'load_model_path':'results/sind_best_model_0001.pt',
     'load_model_path':None,
-    'exp_name':'reruns_summarization/summarizer_finetune_local_sort_model',
+    'exp_name':basic_path+'reruns_summarization/'+basic_name,
     'debug':False,
     'device': torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 }

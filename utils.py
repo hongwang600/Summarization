@@ -11,6 +11,7 @@ random_seed = conf['random_seed']
 device = conf['device']
 random.seed(random_seed)
 torch.manual_seed(random_seed)
+max_doc_len = 100
 
 def get_all_words(data):
     all_text = []
@@ -61,6 +62,7 @@ def load_vocab():
 def build_paragraph(text_data, my_vocab):
     #print(my_vocab[text_data[0]])
     #print(text_data)
+    text_data = [text[:max_doc_len] for text in text_data]
     indexs = [torch.tensor(my_vocab[text]).long() for text in text_data]
     lengths = [len(text) for text in text_data]
     #padded_sequence = pad_sequence(indexs, padding_value=1)
