@@ -23,7 +23,8 @@ def read_data(filename, add_first_sentence, keep_single_sent):
             for sentence in line.split('##SENT##'):
                 #sentence = sentence.split()[:max_sent_len]
                 sentence = sentence.split()
-                all_sentences.append(sentence)
+                if len(sentence) > 0:
+                    all_sentences.append(sentence)
                 count+=1
                 if count == max_doc_len:
                     break
