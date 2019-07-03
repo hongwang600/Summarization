@@ -1,5 +1,11 @@
 # Summarization
 
+## Train the model
+Run
+```
+python train_summarizer.py
+```
+
 ## Evaluation
 Run
 ```
