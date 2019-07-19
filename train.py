@@ -227,10 +227,6 @@ def train(train_data, dev_data, my_vocab, train_target, dev_target):
 if __name__ == '__main__':
     train_data, dev_data, test_data = \
         get_train_dev_test_data(keep_single_sent=False)
-    newsroom_train = read_data('data/summarization/newsroom/train.txt.src', False, False)
-    newsroom_dev = read_data('data/summarization/newsroom/dev.txt.src', False, False)
-    train_data += newsroom_train
-    train_data += newsroom_dev
     #print(train_data[0])
     #print(dev_data[0])
     #print(test_data[0])
