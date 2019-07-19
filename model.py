@@ -3,7 +3,6 @@ import torch
 from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 from config import CONFIG as conf
 import numpy as np
-from PointerNet import PointerNet
 import torch.nn.functional as F
 from attention import SimpleEncoder
 
