@@ -18,7 +18,7 @@ CONFIG= {
     'dev_tgt_file':'data/summarization/val.txt.tgt',
     'test_file':'data/summarization/test.txt.src',
     'test_tgt_file':'data/summarization/test.txt.tgt',
-    'model_path':'results/full_aug_data_switch_representation_model.pt',
+    'model_path':'results/pretrain_model.pt',
     'ref_folder': None,
     'pred_folder': None,
     #'summarizer_model_path':'results/summarizer_fintune_model.pt',
