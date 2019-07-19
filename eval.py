@@ -15,7 +15,6 @@ exp_name = conf['exp_name']
 model_to_load = conf['load_model_path']
 mask_pro = conf['mask_pro']
 loss_margin = conf['loss_margin']
-rouge_calculator = Rouge.Rouge(use_ngram_buf=True)
 
 def compute_score(outs, pool_sent_embeds, masks):
     cos = nn.CosineSimilarity(dim=-1)
