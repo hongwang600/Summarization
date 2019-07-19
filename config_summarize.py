@@ -15,7 +15,7 @@ basic_name = 'switch_0_35'
 #embed_path = 'results/useful_represents/local_sort_representation_model.pt'
 #embed_path = 'results/useful_represents/aug_data_switch_representation_model.pt'
 #embed_path = 'results/useful_represents/newsroom_switch_representation_model.pt'
-embed_path = 'results/useful_represents/switch_0_35_representation_model.pt'
+embed_path = 'results/pretrain_model.pt'
 CONFIG= {
     'learning_rate': 0.00001,
     'embedding_dim': 100,
