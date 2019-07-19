@@ -1,5 +1,5 @@
 import torch
-basic_path = '/mnt/sshd/hongwang/summ_results/'
+basic_path = '/mnt/sshd/hongwang/results/'
 #basic_name = 'basic'
 #basic_name = 'mask'
 #basic_name = 'replace'
