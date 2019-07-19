@@ -5,7 +5,6 @@ from utils import build_vocab, build_paragraph, filter_output, mask_sentence, \
 from config import CONFIG as conf
 from data_loader import get_train_dev_test_data, read_oracle, read_target_txt
 import torch.nn as nn
-from PyRouge.Rouge import Rouge
 from rouge_score import compute_rouge_score, rouge_eval
 
 batch_size = conf['batch_size']
