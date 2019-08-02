@@ -8,7 +8,7 @@ Paper link: [https://arxiv.org/abs/1906.04466](https://arxiv.org/abs/1906.04466)
 
 Download [data](https://drive.google.com/file/d/1oHrS23qQs0ufcmSQAMAlg-2wf1xBuyT6/view?usp=sharing)
 
-### Prerequirement
+### Requirement
 
 Install [pyrouge](https://github.com/bheinzerling/pyrouge)
 
